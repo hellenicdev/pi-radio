@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Pi Radio</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #1e1e2f, #3a3a5a);
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      text-align: center;
+      background: rgba(0,0,0,0.4);
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+      width: 300px;
+    }
+
+    /* ✅ RECTANGLE LOGO */
+    .logo {
+      width: 250px;
+      height: 100px;
+      margin: 0 auto 20px;
+      background: #ccc;
+      border-radius: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #333;
+      font-weight: bold;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+    }
+
+    button {
+      background: #ff4757;
+      border: none;
+      color: white;
+      padding: 15px 25px;
+      font-size: 18px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="logo">
+<img src="logo.webp" style="width:100%; height:100%; object-fit:cover; border-radius:10px;">
+    </div>
+
+    <!--<h1>Pi Radio</h1>-->
+
+    <button onclick="toggleRadio()">▶ Play</button>
+
+    <audio id="radioPlayer"></audio>
+  </div>
+
+  <script>
+    const player = document.getElementById('radioPlayer');
+    const button = document.querySelector('button');
+    const streamURL = "https://niobic-omari-boastingly.ngrok-free.dev/radio.mp3";
+
+    let isPlaying = false;
+
+    function startStream() {
+      player.src = streamURL + "?t=" + new Date().getTime(); // cache bust
+      player.load();
+      player.play();
+    }
+
+    function toggleRadio() {
+      if (!isPlaying) {
+        startStream();
+        button.textContent = "⏸ Pause";
+        isPlaying = true;
+      } else {
+        player.pause();
+        player.src = "";
+        button.textContent = "▶ Play";
+        isPlaying = false;
+      }
+    }
+
+    // ✅ AUTO-RECONNECT when stream ends
+    player.addEventListener('ended', () => {
+      if (isPlaying) {
+        startStream();
+      }
+    });
+
+    // ✅ AUTO-RECONNECT on error (very important for live streams)
+    player.addEventListener('error', () => {
+      if (isPlaying) {
+        setTimeout(startStream, 2000); // retry after 2 sec
+      }
+    });
+  </script>
+
+</body>
+</html>
