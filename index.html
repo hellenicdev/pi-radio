@@ -1,20 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
-<meta name="description" content="A simple quiz. You hear sounds and you have to guess them."/>
-<meta name="keywords" content="HellenicDev, programming, HTML, CSS, JS, open-source, projects, web-developement, hellenic, dev, developer, radio, station, music, songs, pi, raspberry pi, pi radio"/>
-<meta name="author" content="HellenicDev"/>
-<meta name="theme-color" content="#19336e"/>
 <head>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-9FWQFZME3Z');
-</script>
   <meta charset="UTF-8">
-  <title>Pi Radio</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pi Radio</title>
+  <meta name="description" content="Listen to Pi Radio, a 24/7 internet radio station hosted on a Raspberry Pi."/>
+  <meta name="keywords" content="HellenicDev, programming, HTML, CSS, JS, open-source, projects, web-developement, hellenic, dev, developer, radio, station, music, songs, pi, raspberry pi, pi radio"/>
+  <meta name="author" content="HellenicDev"/>
+  <meta name="theme-color" content="#19336e"/>
+  <link rel="canonical" href="https://hellenicdev.eu/pi-radio/">
+  <meta property="og:url" content="https://hellenicdev.eu/pi-radio/">
+  <script id="Cookiebot" src="https://consent.cookiebot.com/uc.js" data-cbid="06e4a97f-2c34-41ed-8ab6-d53b581ff080" type="text/javascript" async></script>
+  <script src="https://hellenicdev.eu/js/consent-analytics.js" data-ga-id="G-9FWQFZME3Z" defer></script>
   <style>
     body {
       margin: 0;
@@ -81,7 +78,7 @@
 
   <div class="container">
     <div class="logo">
-<img src="logo.webp" style="width:100%; height:100%; object-fit:cover; border-radius:10px;">
+<img src="logo.webp" alt="Pi Radio" style="width:100%; height:100%; object-fit:cover; border-radius:10px;">
     </div>
 
     <!--<h1>Pi Radio</h1>-->
@@ -97,25 +94,65 @@
     const streamURL = "https://niobic-omari-boastingly.ngrok-free.dev/radio.mp3";
 
     let isPlaying = false;
+    let retryDelay = 2000;
+    const maxRetryDelay = 60000;
+    let retryTimer = null;
+
+    function clearRetry() {
+      if (retryTimer !== null) {
+        clearTimeout(retryTimer);
+        retryTimer = null;
+      }
+    }
+
+    function resetRetry() {
+      clearRetry();
+      retryDelay = 2000;
+    }
+
+    function scheduleRetry() {
+      if (!isPlaying || retryTimer !== null) return;
+      const delay = retryDelay;
+      retryDelay = Math.min(retryDelay * 2, maxRetryDelay);
+      retryTimer = setTimeout(() => {
+        retryTimer = null;
+        if (isPlaying) startStream();
+      }, delay);
+    }
 
     function startStream() {
+      clearRetry();
       player.src = streamURL + "?t=" + new Date().getTime(); // cache bust
       player.load();
-      player.play();
+      const playPromise = player.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          retryDelay = 2000;
+        }).catch(() => {
+          if (isPlaying) scheduleRetry();
+        });
+      }
     }
 
     function toggleRadio() {
       if (!isPlaying) {
+        resetRetry();
+        isPlaying = true;
         startStream();
         button.textContent = "⏸ Pause";
-        isPlaying = true;
       } else {
+        isPlaying = false;
+        resetRetry();
         player.pause();
         player.src = "";
         button.textContent = "▶ Play";
-        isPlaying = false;
       }
     }
+
+    player.addEventListener('playing', () => {
+      retryDelay = 2000;
+      clearRetry();
+    });
 
     // ✅ AUTO-RECONNECT when stream ends
     player.addEventListener('ended', () => {
@@ -124,10 +161,10 @@
       }
     });
 
-    // ✅ AUTO-RECONNECT on error (very important for live streams)
+    // ✅ AUTO-RECONNECT on error, with exponential backoff
     player.addEventListener('error', () => {
       if (isPlaying) {
-        setTimeout(startStream, 2000); // retry after 2 sec
+        scheduleRetry();
       }
     });
   </script>
